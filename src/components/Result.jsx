@@ -12,10 +12,10 @@ const Result = ({ gender = 'male', scores, onRestart }) => {
 
     // 2. 점수 가공 (가장 높은 점수 찾기)
     const stats = [
-      { id: 's', val: scores?.S || 0 },
-      { id: 'm', val: scores?.M || 0 },
-      { id: 'a', val: scores?.A || 0 },
-      { id: 'f', val: scores?.F || 0 }
+      { id: 's', val: scores?.s || 0 },
+      { id: 'm', val: scores?.m || 0 },
+      { id: 'a', val: scores?.a || 0 },
+      { id: 'f', val: scores?.f || 0 }
     ];
     
     // 점수 내림차순 정렬
