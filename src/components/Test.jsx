@@ -20,6 +20,10 @@ const Test = ({ gender, onComplete }) => {
 
   const handleAnswer = (effects) => {
     if (!effects) return;
+
+    // 로직 체크용 로그 (개발자 도구에서 확인 가능)
+    console.log(`Step ${currentIdx + 1} - 선택한 효과:`, effects);
+
     const newScores = { ...userScores };
     Object.keys(effects).forEach((stat) => {
       const key = stat.toUpperCase();
@@ -27,11 +31,14 @@ const Test = ({ gender, onComplete }) => {
         newScores[key] += effects[stat];
       }
     });
+
+    console.log("누적 점수 상태:", newScores);
     setUserScores(newScores);
 
     if (currentIdx < questions.length - 1) {
       setCurrentIdx(currentIdx + 1);
     } else {
+      console.log("최종 결과 산출 데이터:", newScores);
       onComplete(newScores);
     }
   };
@@ -40,7 +47,6 @@ const Test = ({ gender, onComplete }) => {
 
   return (
     <Container>
-      {/* 상단 프로그레스 영역: 높이 최소화 */}
       <HeaderSection>
         <ProgressBarContainer>
           <ProgressLabel>DESTINY PROGRESS: {Math.round(progress)}%</ProgressLabel>
@@ -57,12 +63,11 @@ const Test = ({ gender, onComplete }) => {
       <AnimatePresence mode="wait">
         <MainContent
           key={currentIdx}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.02 }}
+          transition={{ duration: 0.4 }}
         >
-          {/* 좌측: 스토리 이미지 영역 (데스크톱에서 시인성 확보) */}
           <VisualSection>
             <ImageWrapper>
               <img 
@@ -74,7 +79,6 @@ const Test = ({ gender, onComplete }) => {
             </ImageWrapper>
           </VisualSection>
 
-          {/* 우측: 질문 및 선택지 영역 */}
           <InteractiveSection>
             <QuestionBox>
               <h2 className="question-text">{currentQuestion.question}</h2>
@@ -87,11 +91,7 @@ const Test = ({ gender, onComplete }) => {
               {currentAnswers.map((answer, index) => (
                 <AnswerButton
                   key={index}
-                  whileHover={{ 
-                    scale: 1.02, 
-                    backgroundColor: "rgba(212, 175, 55, 0.1)",
-                    borderColor: "#D4AF37" 
-                  }}
+                  whileHover={{ scale: 1.02, backgroundColor: "rgba(212, 175, 55, 0.1)" }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleAnswer(answer.effects || {})}
                 >
@@ -107,28 +107,31 @@ const Test = ({ gender, onComplete }) => {
   );
 };
 
-export default Test;
-
-// --- 스타일 컴포넌트 (데스크톱 최적화 엔진) ---
+// --- 스타일 컴포넌트 (모바일 최적화 레이아웃) ---
 
 const Container = styled.div`
   width: 100%;
-  height: 100vh; /* 화면 높이 고정 */
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   background: radial-gradient(circle at center, #1a0a0a 0%, #050505 100%);
-  overflow: hidden; /* 전체 스크롤 방지 */
-  padding: 0 20px;
+  padding: 0 15px;
+  overflow-x: hidden;
+  /* 모바일에서 주소창 때문에 높이가 잘리는 현상 방지 */
+  @media (max-width: 900px) {
+    height: auto;
+    padding-bottom: 40px;
+  }
 `;
 
 const HeaderSection = styled.div`
   width: 100%;
   max-width: 1100px;
-  height: 10vh; /* 헤더 비중 제한 */
+  height: 8vh;
   display: flex;
   align-items: flex-end;
-  padding-bottom: 20px;
+  padding-bottom: 15px;
 `;
 
 const ProgressBarContainer = styled.div`
@@ -138,50 +141,55 @@ const ProgressBarContainer = styled.div`
 const ProgressLabel = styled.p`
   color: #D4AF37;
   font-family: 'Cinzel', serif;
-  font-size: 0.75rem;
-  margin-bottom: 8px;
+  font-size: 0.7rem;
+  margin-bottom: 6px;
   text-align: right;
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
 `;
 
 const BarOuter = styled.div`
   width: 100%;
   height: 3px;
   background: rgba(255, 255, 255, 0.1);
-  overflow: hidden;
 `;
 
 const BarInner = styled(motion.div)`
   height: 100%;
   background: #D4AF37;
-  box-shadow: 0 0 10px #D4AF37;
+  box-shadow: 0 0 8px #D4AF37;
 `;
 
 const MainContent = styled(motion.div)`
   width: 100%;
   max-width: 1100px;
-  height: 75vh; /* 메인 영역 높이 제한 */
+  height: 80vh;
   display: flex;
-  gap: 40px;
+  gap: 0;
   align-items: stretch;
-  background: rgba(17, 17, 17, 0.6);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(212, 175, 55, 0.1);
-  border-radius: 24px;
+  background: rgba(17, 17, 17, 0.8);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 20px;
   overflow: hidden;
 
   @media (max-width: 900px) {
     flex-direction: column;
     height: auto;
-    overflow-y: auto;
-    max-height: 85vh;
+    max-height: none;
+    margin-top: 10px;
   }
 `;
 
 const VisualSection = styled.div`
-  flex: 1.2;
+  flex: 1.3;
   position: relative;
   overflow: hidden;
+  background: #000;
+
+  @media (max-width: 900px) {
+    height: 30vh; /* 모바일 이미지 높이 고정 */
+    flex: none;
+  }
 `;
 
 const ImageWrapper = styled.div`
@@ -192,29 +200,32 @@ const ImageWrapper = styled.div`
   img {
     width: 100%;
     height: 100%;
+    /* 잘림 방지를 위해 'cover' 유지하되 위치를 중앙으로 고정 */
     object-fit: cover;
+    object-position: center 20%; 
     filter: brightness(0.7) contrast(1.1);
   }
 
   .overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to right, transparent 70%, rgba(17, 17, 17, 1));
+    background: linear-gradient(to right, transparent 60%, rgba(17, 17, 17, 1));
     @media (max-width: 900px) {
-      background: linear-gradient(to bottom, transparent 70%, rgba(17, 17, 17, 1));
+      background: linear-gradient(to bottom, transparent 50%, rgba(17, 17, 17, 1));
     }
   }
 
   .question-tag {
     position: absolute;
-    top: 30px;
-    left: 30px;
-    background: #8b0000;
+    top: 20px;
+    left: 20px;
+    background: rgba(139, 0, 0, 0.9);
     color: #fff;
-    padding: 5px 15px;
+    padding: 4px 12px;
     font-family: 'Cinzel', serif;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     border: 1px solid #D4AF37;
+    z-index: 10;
   }
 `;
 
@@ -223,25 +234,25 @@ const InteractiveSection = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 40px;
+  padding: 30px 40px;
   @media (max-width: 900px) {
-    padding: 30px;
+    padding: 20px 25px 30px 25px;
   }
 `;
 
 const QuestionBox = styled.div`
-  margin-bottom: 30px;
+  margin-bottom: 25px;
   .question-text {
-    font-size: clamp(1.4rem, 4vh, 2rem);
+    font-size: clamp(1.2rem, 3.5vh, 1.8rem);
     color: #fff;
-    line-height: 1.3;
-    margin-bottom: 15px;
+    line-height: 1.4;
+    margin-bottom: 12px;
     font-family: 'Cinzel', serif;
     word-break: keep-all;
   }
   .description {
-    color: #999;
-    font-size: 1rem;
+    color: #aaa;
+    font-size: 0.9rem;
     line-height: 1.5;
     font-style: italic;
   }
@@ -250,35 +261,34 @@ const QuestionBox = styled.div`
 const AnswerGrid = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 `;
 
 const AnswerButton = styled(motion.button)`
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 18px 25px;
-  border-radius: 12px;
-  color: #ccc;
+  padding: 16px 20px;
+  border-radius: 10px;
+  color: #ddd;
   cursor: pointer;
   display: flex;
   align-items: center;
   text-align: left;
-  transition: all 0.3s ease;
   
   .alphabet {
     font-family: 'Cinzel', serif;
     color: #D4AF37;
-    margin-right: 20px;
-    font-size: 1.2rem;
+    margin-right: 15px;
+    font-size: 1.1rem;
     font-weight: bold;
   }
   
   .text {
-    font-size: 1rem;
-    line-height: 1.4;
+    font-size: 0.95rem;
+    line-height: 1.3;
   }
 
-  @media (max-height: 800px) {
-    padding: 14px 20px;
+  @media (max-height: 700px) {
+    padding: 12px 15px;
   }
 `;

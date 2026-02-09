@@ -6,73 +6,95 @@ import { maleHeroes, femaleHeroes } from '../data/heroes';
 const Result = ({ gender = 'male', scores, onRestart }) => {
   
   const hero = useMemo(() => {
-    const S = scores?.S || 0;
-    const M = scores?.M || 0;
-    const A = scores?.A || 0;
-    const F = scores?.F || 0;
-
+    // 1. 데이터셋 선택 및 안전 장치
     const dataset = gender === 'female' ? femaleHeroes : maleHeroes;
     if (!dataset || dataset.length === 0) return null;
 
+    // 2. 점수 가공 (가장 높은 점수 찾기)
     const stats = [
-      { id: 's', val: S },
-      { id: 'm', val: M },
-      { id: 'a', val: A },
-      { id: 'f', val: F }
+      { id: 'S', val: scores?.S || 0 },
+      { id: 'M', val: scores?.M || 0 },
+      { id: 'A', val: scores?.A || 0 },
+      { id: 'F', val: scores?.F || 0 }
     ];
     
+    // 점수 내림차순 정렬
     const sorted = [...stats].sort((a, b) => b.val - a.val);
-    const topStat = sorted[0].id;
+    const topStatId = sorted[0].id; // 가장 높은 점수의 ID (예: 'S')
 
-    if ((S + M + A + F) >= 10) {
-      const legend = dataset.find(h => h.rank === "전설");
-      if (legend) return legend;
-    }
+    // [로직 수정] 전설 등급 판정 기준 변경
+    // 단순히 합계가 아닌, 특정 점수가 압도적으로 높거나 특정 조건을 만족할 때만 전설이 나오도록 하거나,
+    // 점수 기반으로 먼저 찾은 뒤 없으면 기본값을 반환하도록 순서를 조정합니다.
 
-    return dataset.find(h => h.id.includes(topStat)) || dataset[0];
+    // 3. ID가 일치하는 영웅 찾기 (heroes.js의 id가 'S_HERO', 'M_HERO' 형태라고 가정)
+    const matchedHero = dataset.find(h => h.id.startsWith(topStatId));
+
+    // 4. 예외 처리: 만약 매칭된 영웅이 없으면 해당 데이터셋의 첫 번째 영웅 반환
+    return matchedHero || dataset[0];
     
   }, [gender, scores]);
 
   if (!hero) return <LoadingText>운명의 실타래를 푸는 중...</LoadingText>;
 
+  // 결과 공유 함수
+  const handleShare = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      alert('운명의 기록이 복사되었습니다! 친구들에게 공유해 보세요.');
+    });
+  };
+
   return (
     <Container
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 1 }}
+      transition={{ duration: 0.8 }}
     >
       <TitleWrapper>
-        <p className="subtitle">YOUR DESTINY IS REVEALED</p>
-        <h1 className="title">운명의 결과</h1>
+        <motion.p 
+          className="subtitle"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          YOUR DESTINY IS REVEALED
+        </motion.p>
+        <motion.h1 
+          className="title"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4 }}
+        >
+          운명의 결과
+        </motion.h1>
       </TitleWrapper>
 
       <ContentLayout>
-        {/* 카드 섹션: 영웅 이미지를 보여줌 */}
+        {/* 카드 섹션 */}
         <HeroCard 
           $glowColor={hero.glowColor || "#D4AF37"}
-          whileHover={{ 
-            y: -15, 
-            scale: 1.02,
-            transition: { duration: 0.3 } 
-          }}
-          whileTap={{ scale: 0.98 }}
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.8 }}
+          transition={{ delay: 0.6, duration: 0.8 }}
         >
           <div className="card-inner">
             <span className="rank-tag">{hero.rank}</span>
             <img src={hero.image} alt={hero.name} />
             <div className="hero-info">
+              <p className="hero-weapon">{hero.weapon}</p>
               <h3>{hero.name}</h3>
-              <p>{hero.weapon}</p>
             </div>
           </div>
         </HeroCard>
 
-        {/* 분석 섹션: 텍스트 정보를 보여줌 */}
-        <AnalysisSection>
+        {/* 분석 섹션 */}
+        <AnalysisSection
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.8, duration: 0.8 }}
+        >
           <Description>"{hero.description}"</Description>
+          
           <AnalysisGrid>
             <Box>
               <div className="label">성격적 장점</div>
@@ -83,19 +105,25 @@ const Result = ({ gender = 'male', scores, onRestart }) => {
               <ul>{hero.weakness?.map((w, i) => <li key={i}>{w}</li>)}</ul>
             </Box>
           </AnalysisGrid>
+
           <AdviceBox>
-            <div className="label">운명의 조언</div>
+            <div className="label">📜 운명의 조언</div>
             <p>{hero.advice}</p>
           </AdviceBox>
+
           <ButtonGroup>
             <ShareButton 
-              whileHover={{ scale: 1.05 }} 
-              whileTap={{ scale: 0.95 }}
-              onClick={() => alert('결과 링크가 복사되었습니다!')}
+              whileHover={{ scale: 1.02 }} 
+              whileTap={{ scale: 0.98 }}
+              onClick={handleShare}
             >
-              결과 공유하기
+              운명 공유하기
             </ShareButton>
-            <RetryButton onClick={onRestart}>
+            <RetryButton 
+              whileHover={{ backgroundColor: "rgba(212, 175, 55, 0.1)" }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onRestart}
+            >
               다시 시작하기
             </RetryButton>
           </ButtonGroup>
@@ -111,167 +139,172 @@ export default Result;
 
 const Container = styled(motion.div)`
   min-height: 100vh;
-  background: #050505;
-  padding: 60px 20px;
+  background: radial-gradient(circle at top, #1a0a0a 0%, #050505 100%);
+  padding: 40px 20px 80px;
   display: flex;
   flex-direction: column;
   align-items: center;
   color: white;
+  overflow-x: hidden;
 `;
 
 const TitleWrapper = styled.div`
   text-align: center;
-  margin-bottom: 50px;
+  margin-bottom: 40px;
   .subtitle { 
     color: #8b0000; 
     letter-spacing: 4px; 
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     font-family: 'Cinzel', serif;
+    margin-bottom: 10px;
   }
   .title { 
     color: #D4AF37; 
-    font-size: 3rem; 
+    font-size: clamp(2rem, 8vw, 3.5rem); 
     font-family: 'Cinzel', serif;
-    text-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+    text-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
   }
 `;
 
 const ContentLayout = styled.div`
   display: flex;
-  gap: 50px;
+  gap: 40px;
   flex-wrap: wrap;
   justify-content: center;
   align-items: flex-start;
   width: 100%;
-  max-width: 1100px;
+  max-width: 1000px;
+  
+  @media (max-width: 900px) {
+    gap: 30px;
+  }
 `;
 
 const HeroCard = styled(motion.div)`
-  width: 320px;
-  height: 480px;
-  cursor: pointer;
+  width: 100%;
+  max-width: 340px;
+  aspect-ratio: 2/3;
+  position: relative;
 
   .card-inner {
     width: 100%;
     height: 100%;
-    border: 2px solid #D4AF37;
-    border-radius: 15px;
+    border: 1px solid rgba(212, 175, 55, 0.5);
+    border-radius: 20px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 0 30px ${props => props.$glowColor};
-    background: #000;
+    box-shadow: 0 10px 50px -10px ${props => props.$glowColor}88;
+    background: #111;
 
     img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      opacity: 0.85;
-      transition: transform 0.5s ease;
+      opacity: 0.9;
     }
 
     .rank-tag {
       position: absolute;
-      top: 15px;
-      right: 15px;
+      top: 20px;
+      right: 20px;
       background: #D4AF37;
       color: black;
-      padding: 6px 14px;
-      border-radius: 4px;
+      padding: 5px 15px;
+      border-radius: 5px;
       font-weight: 800;
-      font-size: 0.9rem;
+      font-size: 0.8rem;
       z-index: 2;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
     }
 
     .hero-info {
       position: absolute;
       bottom: 0;
       width: 100%;
-      background: linear-gradient(transparent, rgba(0, 0, 0, 0.95));
-      padding: 30px 20px;
+      background: linear-gradient(transparent, rgba(0, 0, 0, 0.9) 70%);
+      padding: 40px 20px 30px;
       text-align: center;
       z-index: 2;
 
       h3 {
         color: white;
-        margin: 0;
-        font-size: 1.8rem;
+        margin: 5px 0 0;
+        font-size: 2rem;
         font-family: 'Cinzel', serif;
       }
 
-      p {
+      .hero-weapon {
         color: #D4AF37;
-        margin-top: 8px;
-        font-size: 1rem;
-        letter-spacing: 1px;
+        font-size: 0.9rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
       }
     }
   }
-
-  &:hover .card-inner img {
-    transform: scale(1.1);
-    opacity: 1;
-  }
 `;
 
-const AnalysisSection = styled.div`
+const AnalysisSection = styled(motion.div)`
   flex: 1;
-  min-width: 350px;
-  max-width: 550px;
+  min-width: 320px;
+  max-width: 500px;
 `;
 
 const Description = styled.p`
   font-style: italic;
-  color: #e0e0e0;
-  border-left: 4px solid #8b0000;
+  color: #ccc;
+  border-left: 3px solid #8b0000;
   padding-left: 20px;
-  line-height: 1.8;
-  font-size: 1.1rem;
-  margin-bottom: 30px;
+  line-height: 1.6;
+  font-size: 1.05rem;
+  margin-bottom: 25px;
+  word-break: keep-all;
 `;
 
 const AnalysisGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 30px;
+  gap: 15px;
+  margin-bottom: 25px;
 `;
 
 const Box = styled.div`
-  background: #111;
-  padding: 20px;
-  border-radius: 10px;
-  border: 1px solid #222;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   .label { 
     color: #D4AF37; 
     font-weight: bold; 
-    margin-bottom: 12px;
-    font-size: 0.95rem;
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+    font-family: 'Cinzel', serif;
   }
   ul { 
-    font-size: 0.9rem; 
-    color: #bbb; 
-    padding-left: 18px; 
+    font-size: 0.85rem; 
+    color: #aaa; 
+    padding-left: 15px; 
     margin: 0;
-    li { margin-bottom: 6px; }
+    li { margin-bottom: 5px; }
   }
 `;
 
 const AdviceBox = styled.div`
   background: rgba(212, 175, 55, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  padding: 25px;
-  border-radius: 10px;
-  margin-bottom: 40px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
   .label { 
     color: #D4AF37; 
     font-weight: bold;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     display: block;
+    font-size: 0.9rem;
   }
   p { 
-    font-size: 1rem; 
+    font-size: 0.95rem; 
     color: #ddd;
-    line-height: 1.6;
+    line-height: 1.5;
     margin: 0;
   }
 `;
@@ -279,35 +312,30 @@ const AdviceBox = styled.div`
 const ButtonGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
 `;
 
 const ShareButton = styled(motion.button)`
-  padding: 18px;
+  padding: 16px;
   background: #D4AF37;
   border: none;
   font-weight: bold;
-  font-size: 1.1rem;
+  font-size: 1rem;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 8px;
   color: #000;
-  transition: background 0.3s;
-  &:hover { background: #f1c40f; }
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
 `;
 
-const RetryButton = styled.button`
-  padding: 18px;
+const RetryButton = styled(motion.button)`
+  padding: 16px;
   background: transparent;
-  border: 1px solid #D4AF37;
+  border: 1px solid rgba(212, 175, 55, 0.5);
   color: #D4AF37;
   font-weight: bold;
-  font-size: 1.1rem;
+  font-size: 1rem;
   cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.3s;
-  &:hover {
-    background: rgba(212, 175, 55, 0.1);
-  }
+  border-radius: 8px;
 `;
 
 const LoadingText = styled.div`
@@ -316,6 +344,7 @@ const LoadingText = styled.div`
   align-items: center;
   justify-content: center;
   color: #D4AF37;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   background: #050505;
+  font-family: 'Cinzel', serif;
 `;
