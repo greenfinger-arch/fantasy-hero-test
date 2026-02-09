@@ -292,3 +292,4 @@ const AnswerButton = styled(motion.button)`
     padding: 12px 15px;
   }
 `;
+export default Test;
