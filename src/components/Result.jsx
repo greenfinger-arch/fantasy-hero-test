@@ -1,61 +1,34 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import { maleHeroes, femaleHeroes } from '../data/heroes';
 
-const Result = ({ gender = 'male', scores, onRestart }) => {
-  // 디버깅을 위한 로그 (컴포넌트 내부로 이동)
-  console.log("현재 점수 데이터:", scores);
+const Result = ({ gender, scores, onRestart }) => {
+  // 1. 데이터 디버깅 (로그 확인 필수!)
+  useEffect(() => {
+    console.log("최종 도착 점수:", scores);
+  }, [scores]);
 
   const hero = useMemo(() => {
     const dataset = gender === 'female' ? femaleHeroes : maleHeroes;
-    if (!dataset || dataset.length === 0) return null;
 
-    // 1. 점수 계산 (소문자 ID로 매칭 준비)
+    // 점수 합산 및 최대값 찾기
     const stats = [
-      { type: 's', val: scores?.S || 0 },
-      { type: 'm', val: scores?.M || 0 },
-      { type: 'a', val: scores?.A || 0 },
-      { type: 'f', val: scores?.F || 0 }
+      { id: 'S', val: scores?.S || 0 },
+      { id: 'M', val: scores?.M || 0 },
+      { id: 'A', val: scores?.A || 0 },
+      { id: 'F', val: scores?.F || 0 }
     ];
-    
-    // 2. 가장 높은 점수 찾기
-    const sortedStats = [...stats].sort((a, b) => b.val - a.val);
-    const topType = sortedStats[0].type; 
 
-    // 3. [전설 등급 판정] 합계 점수가 높을 경우 (12점 만점 기준 11점 이상)
-    const totalScore = (scores?.S || 0) + (scores?.M || 0) + (scores?.A || 0) + (scores?.F || 0);
-    if (totalScore >= 11) {
-      const legend = dataset.find(h => h.rank === "전설");
-      if (legend) return legend;
-    }
+    // 가장 높은 점수의 ID 추출
+    const maxStat = stats.sort((a, b) => b.val - a.val)[0].id.toLowerCase();
 
-    // 4. 🔥 [정밀 매칭 로직] 
-    // m_s_1 같은 ID 구조에서 가운데 글자(s)를 정확히 추출하여 비교합니다.
-    const matchedHero = dataset.find(h => {
-      const heroId = h.id.toLowerCase();
-      const idParts = heroId.split('_'); 
-      // 데이터 형식이 m_s_1 이라면 idParts[1]이 's'가 됩니다.
-      return idParts[1] === topType;
-    });
+    // 🎯 [핵심] ID 매칭 로직 강화 (예: m_s_1 처럼 중간에 타입이 포함된 경우)
+    const found = dataset.find(h => h.id.toLowerCase().includes(`_${maxStat}_`));
 
-    // 5. 예외 처리: 매칭 실패 시 포함 여부로 재검사, 그래도 없으면 첫 번째 캐릭터
-    if (!matchedHero) {
-      const backupHero = dataset.find(h => h.id.toLowerCase().includes(`_${topType}_`));
-      return backupHero || dataset[0];
-    }
-
-    return matchedHero;
+    // 만약 점수가 다 0이거나 못 찾으면, 소드마스터(보통 1번) 말고 랜덤하게라도 보여줌
+    return found || dataset[Math.floor(Math.random() * dataset.length)];
   }, [gender, scores]);
-
-  if (!hero) return <LoadingText>운명의 실타래를 푸는 중...</LoadingText>;
-
-  const handleShare = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url).then(() => {
-      alert('운명의 기록이 복사되었습니다! 친구들에게 공유해 보세요.');
-    });
-  };
 
   return (
     <Container
@@ -63,175 +36,117 @@ const Result = ({ gender = 'male', scores, onRestart }) => {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.8 }}
     >
-      <TitleWrapper>
-        <motion.p 
-          className="subtitle"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+      <CardSection>
+        {/* 영웅 카드 등장 연출 */}
+        <HeroCard
+          initial={{ y: 50, opacity: 0, rotateY: -20 }}
+          animate={{ y: 0, opacity: 1, rotateY: 0 }}
+          transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.2 }}
         >
-          YOUR DESTINY IS REVEALED
-        </motion.p>
-        <motion.h1 
-          className="title"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4 }}
-        >
-          운명의 결과
-        </motion.h1>
-      </TitleWrapper>
-
-      <ContentLayout>
-        <HeroCard 
-          $glowColor={hero.glowColor || "#D4AF37"}
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-        >
-          <div className="card-inner">
-            <span className="rank-tag">{hero.rank}</span>
+          <div className="rank-tag">DESTINY RANK: SSR</div>
+          <ImageContainer>
             <img src={hero.image} alt={hero.name} />
-            <div className="hero-info">
-              <p className="hero-weapon">{hero.weapon}</p>
-              <h3>{hero.name}</h3>
-            </div>
-          </div>
+            <div className="glow-effect" />
+          </ImageContainer>
+
+          <InfoBox>
+            <motion.h3
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              {hero.title}
+            </motion.h3>
+            <motion.h1
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.7 }}
+            >
+              {hero.name}
+            </motion.h1>
+            <p className="desc">{hero.description}</p>
+          </InfoBox>
         </HeroCard>
 
-        <AnalysisSection
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.8, duration: 0.8 }}
+        {/* 능력치 그래프 연출 */}
+        <StatBoard
+          initial={{ x: 30, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.9 }}
         >
-          <Description>"{hero.description}"</Description>
-          
-          <AnalysisGrid>
-            <Box>
-              <div className="label">성격적 장점</div>
-              <ul>{hero.strengths?.map((s, i) => <li key={i}>{s}</li>)}</ul>
-            </Box>
-            <Box>
-              <div className="label">보완할 점</div>
-              <p style={{fontSize: '0.85rem', color: '#aaa', margin: 0}}>{hero.weakness}</p>
-            </Box>
-          </AnalysisGrid>
-
-          <AdviceBox>
-            <div className="label">📜 운명의 조언</div>
-            <p>{hero.advice}</p>
-          </AdviceBox>
-
-          <ButtonGroup>
-            <ShareButton 
-              whileHover={{ scale: 1.02 }} 
-              whileTap={{ scale: 0.98 }}
-              onClick={handleShare}
-            >
-              운명 공유하기
-            </ShareButton>
-            <RetryButton 
-              whileHover={{ backgroundColor: "rgba(212, 175, 55, 0.1)" }}
-              whileTap={{ scale: 0.98 }}
-              onClick={onRestart}
-            >
-              다시 시작하기
-            </RetryButton>
-          </ButtonGroup>
-        </AnalysisSection>
-      </ContentLayout>
+          <h3>POTENTIAL STATS</h3>
+          {['S', 'M', 'A', 'F'].map((s, idx) => (
+            <StatRow key={s}>
+              <span className="label">{s}</span>
+              <BarBg>
+                <BarFill
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(scores[s] / 12) * 100}%` }} // 12개 질문 기준
+                  transition={{ duration: 1, delay: 1.2 + (idx * 0.1) }}
+                />
+              </BarBg>
+            </StatRow>
+          ))}
+          <RestartButton
+            onClick={onRestart}
+            whileHover={{ scale: 1.05, boxShadow: "0 0 20px #D4AF37" }}
+            whileTap={{ scale: 0.95 }}
+          >
+            REAWAKEN DESTINY
+          </RestartButton>
+        </StatBoard>
+      </CardSection>
     </Container>
   );
 };
 
-export default Result;
-
-// --- 스타일 컴포넌트 (변경 없음) ---
+// --- 스타일 컴포넌트 ---
 const Container = styled(motion.div)`
-  min-height: 100vh;
-  background: radial-gradient(circle at top, #1a0a0a 0%, #050505 100%);
-  padding: 40px 20px 80px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: white;
-  overflow-x: hidden;
+  width: 100%; min-height: 100vh; display: flex; justify-content: center; align-items: center;
+  background: #050505; padding: 20px;
 `;
 
-const TitleWrapper = styled.div`
-  text-align: center;
-  margin-bottom: 40px;
-  .subtitle { color: #8b0000; letter-spacing: 4px; font-size: 0.8rem; font-family: 'Cinzel', serif; margin-bottom: 10px; }
-  .title { color: #D4AF37; font-size: clamp(2rem, 8vw, 3.5rem); font-family: 'Cinzel', serif; text-shadow: 0 0 20px rgba(212, 175, 55, 0.4); }
-`;
-
-const ContentLayout = styled.div`
-  display: flex;
-  gap: 40px;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: flex-start;
-  width: 100%;
-  max-width: 1000px;
-  @media (max-width: 900px) { gap: 30px; }
+const CardSection = styled.div`
+  display: flex; gap: 40px; max-width: 1000px; width: 100%;
+  @media (max-width: 900px) { flex-direction: column; align-items: center; }
 `;
 
 const HeroCard = styled(motion.div)`
-  width: 100%;
-  max-width: 340px;
-  aspect-ratio: 2/3;
-  position: relative;
-  .card-inner {
-    width: 100%; height: 100%; border: 1px solid rgba(212, 175, 55, 0.5); border-radius: 20px;
-    position: relative; overflow: hidden; box-shadow: 0 10px 50px -10px ${props => props.$glowColor}88;
-    background: #111;
-    img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
-    .rank-tag { position: absolute; top: 20px; right: 20px; background: #D4AF37; color: black; padding: 5px 15px; border-radius: 5px; font-weight: 800; font-size: 0.8rem; z-index: 2; }
-    .hero-info { position: absolute; bottom: 0; width: 100%; background: linear-gradient(transparent, rgba(0, 0, 0, 0.9) 70%); padding: 40px 20px 30px; text-align: center; z-index: 2;
-      h3 { color: white; margin: 5px 0 0; font-size: 2rem; font-family: 'Cinzel', serif; }
-      .hero-weapon { color: #D4AF37; font-size: 0.9rem; letter-spacing: 2px; text-transform: uppercase; }
-    }
-  }
+  flex: 1; background: #111; border: 2px solid #D4AF37; border-radius: 20px;
+  position: relative; overflow: hidden; box-shadow: 0 0 40px rgba(212, 175, 55, 0.2);
+  .rank-tag { position: absolute; top: 15px; right: 15px; color: #D4AF37; font-family: 'Cinzel'; font-weight: bold; z-index: 5; }
 `;
 
-const AnalysisSection = styled(motion.div)`
-  flex: 1;
-  min-width: 320px;
-  max-width: 500px;
+const ImageContainer = styled.div`
+  width: 100%; height: 450px; position: relative;
+  img { width: 100%; height: 100%; object-fit: cover; filter: contrast(1.1) brightness(0.9); }
+  .glow-effect { position: absolute; bottom: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to top, #111, transparent); }
 `;
 
-const Description = styled.p`
-  font-style: italic; color: #ccc; border-left: 3px solid #8b0000; padding-left: 20px; line-height: 1.6; font-size: 1.05rem; margin-bottom: 25px; word-break: keep-all;
+const InfoBox = styled.div`
+  padding: 30px; text-align: center;
+  h3 { color: #8b0000; font-family: 'Cinzel'; font-size: 1rem; margin-bottom: 5px; }
+  h1 { color: #fff; font-family: 'Cinzel'; font-size: 2.2rem; margin-bottom: 15px; letter-spacing: 2px; }
+  .desc { color: #aaa; line-height: 1.6; font-size: 0.95rem; word-break: keep-all; }
 `;
 
-const AnalysisGrid = styled.div`
-  display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;
+const StatBoard = styled(motion.div)`
+  flex: 0.7; display: flex; flex-direction: column; justify-content: center;
+  h3 { font-family: 'Cinzel'; margin-bottom: 20px; color: #D4AF37; }
 `;
 
-const Box = styled.div`
-  background: rgba(255, 255, 255, 0.03); padding: 18px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);
-  .label { color: #D4AF37; font-weight: bold; margin-bottom: 10px; font-size: 0.85rem; font-family: 'Cinzel', serif; }
-  ul { font-size: 0.85rem; color: #aaa; padding-left: 15px; margin: 0; li { margin-bottom: 5px; } }
+const StatRow = styled.div`
+  display: flex; align-items: center; gap: 15px; margin-bottom: 15px;
+  .label { width: 20px; color: #fff; font-family: 'Cinzel'; font-weight: bold; }
 `;
 
-const AdviceBox = styled.div`
-  background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.2); padding: 20px; border-radius: 12px; margin-bottom: 30px;
-  .label { color: #D4AF37; font-weight: bold; margin-bottom: 8px; display: block; font-size: 0.9rem; }
-  p { font-size: 0.95rem; color: #ddd; line-height: 1.5; margin: 0; }
+const BarBg = styled.div` flex: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; `;
+const BarFill = styled(motion.div)` height: 100%; background: linear-gradient(90deg, #8b0000, #D4AF37); box-shadow: 0 0 10px #D4AF37; `;
+
+const RestartButton = styled(motion.button)`
+  margin-top: 30px; padding: 15px; background: transparent; border: 1px solid #D4AF37;
+  color: #D4AF37; font-family: 'Cinzel'; font-size: 1rem; cursor: pointer; border-radius: 5px;
+  transition: all 0.3s;
 `;
 
-const ButtonGroup = styled.div`
-  display: flex; flex-direction: column; gap: 12px;
-`;
-
-const ShareButton = styled(motion.button)`
-  padding: 16px; background: #D4AF37; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; border-radius: 8px; color: #000;
-`;
-
-const RetryButton = styled(motion.button)`
-  padding: 16px; background: transparent; border: 1px solid rgba(212, 175, 55, 0.5); color: #D4AF37; font-weight: bold; font-size: 1rem; cursor: pointer; border-radius: 8px;
-`;
-
-const LoadingText = styled.div`
-  height: 100vh; display: flex; align-items: center; justify-content: center; color: #D4AF37; font-size: 1.2rem; background: #050505; font-family: 'Cinzel', serif;
-`;
+export default Result;
