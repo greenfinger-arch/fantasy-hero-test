@@ -1,3 +1,4 @@
+console.log("현재 점수 데이터:", scores);
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
@@ -5,32 +6,47 @@ import { maleHeroes, femaleHeroes } from '../data/heroes';
 
 const Result = ({ gender = 'male', scores, onRestart }) => {
   
-  const hero = useMemo(() => {
-    // 1. 데이터셋 선택 및 안전 장치
-    const dataset = gender === 'female' ? femaleHeroes : maleHeroes;
-    if (!dataset || dataset.length === 0) return null;
+const hero = useMemo(() => {
+  const dataset = gender === 'female' ? femaleHeroes : maleHeroes;
+  if (!dataset || dataset.length === 0) return null;
 
-    // 2. 점수 가공 (가장 높은 점수 찾기)
-    const stats = [
-      { id: 's', val: scores?.s || 0 },
-      { id: 'm', val: scores?.m || 0 },
-      { id: 'a', val: scores?.a || 0 },
-      { id: 'f', val: scores?.f || 0 }
-    ];
+  // 1. 점수 계산 (대소문자 상관없이 값만 가져옴)
+  const stats = [
+    { type: 's', val: scores?.S || 0 },
+    { type: 'm', val: scores?.M || 0 },
+    { type: 'a', val: scores?.A || 0 },
+    { type: 'f', val: scores?.F || 0 }
+  ];
+  
+  // 2. 가장 높은 점수 찾기
+  const sortedStats = [...stats].sort((a, b) => b.val - a.val);
+  const topType = sortedStats[0].type; // 's', 'm', 'a', 'f' 중 하나
+
+  // 3. [전설 등급 판정] 합계 점수가 만점(12점)에 가까우면 전설 반환
+  const totalScore = (scores?.S || 0) + (scores?.M || 0) + (scores?.A || 0) + (scores?.F || 0);
+  if (totalScore >= 12) {
+    const legend = dataset.find(h => h.rank === "전설");
+    if (legend) return legend;
+  }
+
+  // 4. 🔥 [무적 매칭 로직] 
+  // 데이터의 ID를 소문자로 바꾸고, 단순히 해당 알파벳이 포함되어 있는지만 검사하는 게 아니라 
+  // '성별_타입_번호' 형식(m_s_1)을 완벽하게 분해해서 찾습니다.
+  const matchedHero = dataset.find(h => {
+    const heroId = h.id.toLowerCase(); // 데이터 ID를 소문자로 통일 (m_s_1)
     
-    // 점수 내림차순 정렬
-    const sorted = [...stats].sort((a, b) => b.val - a.val);
-    const topStatId = sorted[0].id; // 가장 높은 점수의 ID (예: 'S')
+    // ID가 "m_s_1" 이라면 ["m", "s", "1"] 로 쪼갭니다.
+    const idParts = heroId.split('_'); 
+    
+    // 쪼개진 부분 중 2번째(index 1)가 우리 점수 타입('s')과 일치하는지 확인
+    return idParts[1] === topType;
+  });
 
-    // [로직 수정] 전설 등급 판정 기준 변경
-    // 단순히 합계가 아닌, 특정 점수가 압도적으로 높거나 특정 조건을 만족할 때만 전설이 나오도록 하거나,
-    // 점수 기반으로 먼저 찾은 뒤 없으면 기본값을 반환하도록 순서를 조정합니다.
-
-    // 3. ID가 일치하는 영웅 찾기 (heroes.js의 id가 'S_HERO', 'M_HERO' 형태라고 가정)
-    const matchedHero = dataset.find(h => h.id.startsWith(topStatId));
-
-    // 4. 예외 처리: 만약 매칭된 영웅이 없으면 해당 데이터셋의 첫 번째 영웅 반환
-    return matchedHero || dataset[0];
+  // 5. 만약 매칭에 실패하면(데이터 형식이 다를 경우) 차선책으로 includes 검사
+  if (!matchedHero) {
+    const backupHero = dataset.find(h => h.id.toLowerCase().includes(`_${topType}_`));
+    return backupHero || dataset[0];
+  }
     
   }, [gender, scores]);
 
