@@ -59,28 +59,28 @@ function App() {
     setStage('test');
   }, []);
 
-  // [중요!] 테스트 완료 시 점수를 저장하고 로딩으로 이동
-  const handleTestComplete = useCallback((finalScores) => {
-    // 이전 상태에 의존하지 않고 전달받은 최종 점수를 즉시 반영
-    setScores(finalScores);
-    setStage('loading');
-  }, []);
+  // [핵심 수정] 테스트 완료 시 점수를 저장하고 로딩 창으로 이동
+  const handleTestComplete = (finalScores) => {
+    console.log("App.jsx가 받은 최종 점수:", finalScores);
+    setScores(finalScores); // 1. 점수 저장
+    setStage('loading');    // 2. 곧바로 로딩 단계로 진입
+  };
 
+  // [핵심 수정] 로딩이 끝나면 결과 창으로 이동
   const handleLoadingFinished = useCallback(() => {
     setStage('result');
   }, []);
 
+  // [핵심 수정] 다시 시작하기 로직
   const handleRestart = useCallback(() => {
-    // 모든 상태 초기화
-    setGender(null);
     setScores({ S: 0, M: 0, A: 0, F: 0 });
     setStage('home');
   }, []);
 
   return (
     <AppContainer>
-      {/* 뮤트 버튼: z-index를 최상위로 올리고 모바일 터치 대응 */}
-      <MuteButton 
+      {/* 뮤트 버튼 */}
+      <MuteButton
         onClick={toggleMute}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
@@ -98,10 +98,10 @@ function App() {
         )}
 
         {stage === 'test' && (
-          <Test 
-            key="test" 
-            gender={gender} 
-            onComplete={handleTestComplete} 
+          <Test
+            key="test"
+            gender={gender}
+            onComplete={handleTestComplete}
           />
         )}
 
@@ -110,11 +110,11 @@ function App() {
         )}
 
         {stage === 'result' && (
-          <Result 
+          <Result
             key="result-view"
-            gender={gender} 
-            scores={scores} 
-            onRestart={handleRestart} 
+            gender={gender}
+            scores={scores}
+            onRestart={handleRestart}
           />
         )}
       </AnimatePresence>
@@ -133,7 +133,6 @@ const AppContainer = styled.div`
   color: #D4AF37;
   overflow-x: hidden;
   position: relative;
-  /* 모바일 스크롤 시 부드러운 움직임 */
   -webkit-overflow-scrolling: touch;
 `;
 
@@ -141,7 +140,7 @@ const MuteButton = styled(motion.button)`
   position: fixed;
   top: 20px;
   right: 20px;
-  z-index: 10000; /* 최상단 고정 */
+  z-index: 10000;
   background: rgba(0, 0, 0, 0.6);
   border: 1px solid rgba(212, 175, 55, 0.5);
   color: #D4AF37;
