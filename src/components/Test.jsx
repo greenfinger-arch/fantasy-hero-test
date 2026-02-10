@@ -123,7 +123,6 @@ const Test = ({ gender, onComplete }) => {
   );
 };
 
-export default Test;
 
 // --- 스타일 컴포넌트 (변경 없음) ---
 const Container = styled.div` width: 100%; min-height: 100vh; display: flex; flex-direction: column; align-items: center; background: radial-gradient(circle at center, #1a0a0a 0%, #050505 100%); padding: 0 15px; overflow-x: hidden; @media (max-width: 900px) { height: auto; padding-bottom: 40px; } `;
