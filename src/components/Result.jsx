@@ -11,36 +11,40 @@ const Result = ({ gender = 'male', scores, onRestart }) => {
     const dataset = gender === 'female' ? femaleHeroes : maleHeroes;
     if (!dataset || dataset.length === 0) return null;
 
-    // 1. 점수 집계 (S, M, A, F)
-    const stats = [
-      { type: 'S', val: scores?.S || 0 },
-      { type: 'M', val: scores?.M || 0 },
-      { type: 'A', val: scores?.A || 0 },
-      { type: 'F', val: scores?.F || 0 }
-    ];
+    // 1. 점수 추출 (기본값 0 설정)
+    const { S = 0, M = 0, A = 0, F = 0 } = scores || {};
+    const totalScore = S + M + A + F;
 
-    // 2. 가장 높은 점수의 타입 찾기 (대문자로 통일)
+    // 2. 가장 높은 점수의 타입 찾기
+    const stats = [
+      { type: 'S', val: S },
+      { type: 'M', val: M },
+      { type: 'A', val: A },
+      { type: 'F', val: F }
+    ];
     const sortedStats = [...stats].sort((a, b) => b.val - a.val);
     const topType = sortedStats[0].type;
 
-    // 3. 전설 등급 판정 (합계 점수 11점 이상)
-    const totalScore = stats.reduce((acc, curr) => acc + curr.val, 0);
+    // 3. 🔥 [정밀 매칭 로직]
+    let matchedHero = null;
+
+    // A. 만점 혹은 고득점(11점 이상)일 때: 해당 타입의 '전설' 등급을 우선 탐색
     if (totalScore >= 11) {
-      const legend = dataset.find(h => h.rank === "전설" || h.rank === "SSR");
-      if (legend) return legend;
+      matchedHero = dataset.find(h => h.type === topType && (h.rank === "전설" || h.rank === "SSR"));
     }
 
-    // 4. 🔥 [정밀 매칭 수정] ID를 쪼개지 않고 데이터의 'type' 필드와 직접 비교합니다.
-    // 데이터에 type: "S" 처럼 정의되어 있으므로 이게 가장 확실합니다.
-    let matchedHero = dataset.find(h => h.type === topType);
-
-    // 5. [예외 처리] 만약 type 필드로 못 찾으면 그때 ID 포함 여부로 재검사
+    // B. 전설 등급이 없거나 점수가 평범할 때: 해당 타입의 일반 캐릭터 탐색
     if (!matchedHero) {
-      matchedHero = dataset.find(h => h.id.toLowerCase().includes(`_${topType.toLowerCase()}_`));
+      matchedHero = dataset.find(h => h.type === topType);
     }
 
-    // 6. [최종 방어] 모든 매칭 실패 시 소드마스터(index 0)가 아닌 다른 영웅(index 1) 반환
-    return matchedHero || dataset[1];
+    // C. [히든 캐릭터] 만약 모든 점수가 0점이고 결과가 안 나온다면 'ALL MAX' 타입 탐색
+    if (!matchedHero && topType === "S" && totalScore === 0) {
+      matchedHero = dataset.find(h => h.type === "ALL MAX");
+    }
+
+    // 4. [최종 방어] 모든 매칭 실패 시 배열의 첫 번째 영웅 반환
+    return matchedHero || dataset[0];
   }, [gender, scores]);
 
   // 로딩 상태 처리

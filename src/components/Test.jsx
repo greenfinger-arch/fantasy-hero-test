@@ -5,35 +5,38 @@ import { questions } from '../data/questions';
 
 const Test = ({ gender, onComplete }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
-  // 🔥 [수정] 빌드 에러 해결: 사용하지 않는 userScores 변수 제거
-  const [, setUserScores] = useState({ S: 0, M: 0, A: 0, F: 0 });
+  // 점수 상태 관리 (S: 근력, M: 마력, A: 민첩, F: 신성)
+  const [userScores, setUserScores] = useState({ S: 0, M: 0, A: 0, F: 0 });
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const handleAnswer = useCallback((effects) => {
+    // effects가 없거나 전환 중이면 중단
     if (!effects || isTransitioning) return;
 
     setIsTransitioning(true);
 
-    // 함수형 업데이트로 최신 상태 유지
+    // 함수형 업데이트로 이전 점수를 기반으로 정확히 합산
     setUserScores((prevScores) => {
       const updatedScores = { ...prevScores };
 
-      Object.keys(effects).forEach((stat) => {
-        const key = stat.toUpperCase();
-        if (Object.prototype.hasOwnProperty.call(updatedScores, key)) {
-          updatedScores[key] += effects[stat];
+      // [핵심 수정] 데이터의 키값이 대소문자 섞여 있어도 안전하게 처리
+      Object.keys(effects).forEach((key) => {
+        const upperKey = key.toUpperCase(); // S, M, A, F로 변환
+        if (Object.prototype.hasOwnProperty.call(updatedScores, upperKey)) {
+          updatedScores[upperKey] += effects[key];
         }
       });
 
-      // 마지막 질문일 때 즉시 결과 전달 (0점 방지 핵심 로직)
+      // 마지막 질문일 때 업데이트된 점수를 즉시 부모(App.jsx)로 전달
       if (currentIdx === questions.length - 1) {
-        console.log("테스트 종료 - 최종 전달:", updatedScores);
+        console.log("🎯 테스트 종료 - 최종 점수 합산:", updatedScores);
         onComplete(updatedScores);
       }
 
       return updatedScores;
     });
 
+    // 다음 질문으로 넘어가기 전 딜레이 (애니메이션 효과용)
     setTimeout(() => {
       if (currentIdx < questions.length - 1) {
         setCurrentIdx(prev => prev + 1);
@@ -42,6 +45,7 @@ const Test = ({ gender, onComplete }) => {
     }, 400);
   }, [currentIdx, isTransitioning, onComplete]);
 
+  // 데이터 로딩 실패 시 방어 코드
   if (!questions || questions.length === 0) {
     return (
       <Container>
@@ -51,6 +55,7 @@ const Test = ({ gender, onComplete }) => {
   }
 
   const currentQuestion = questions[currentIdx];
+  // answers 또는 options 모두 호환 가능하도록 설정
   const currentAnswers = currentQuestion.answers || currentQuestion.options || [];
   const progress = ((currentIdx + 1) / questions.length) * 100;
 
@@ -102,6 +107,7 @@ const Test = ({ gender, onComplete }) => {
                   key={`${currentIdx}-${index}`}
                   whileHover={{ scale: 1.02, backgroundColor: "rgba(212, 175, 55, 0.1)" }}
                   whileTap={{ scale: 0.98 }}
+                  // 🔥 answer.effects가 없는 경우를 대비해 빈 객체({}) 전달
                   onClick={() => handleAnswer(answer.effects || {})}
                   disabled={isTransitioning}
                 >
@@ -116,6 +122,8 @@ const Test = ({ gender, onComplete }) => {
     </Container>
   );
 };
+
+export default Test;
 
 // --- 스타일 컴포넌트 (변경 없음) ---
 const Container = styled.div` width: 100%; min-height: 100vh; display: flex; flex-direction: column; align-items: center; background: radial-gradient(circle at center, #1a0a0a 0%, #050505 100%); padding: 0 15px; overflow-x: hidden; @media (max-width: 900px) { height: auto; padding-bottom: 40px; } `;
