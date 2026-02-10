@@ -5,37 +5,47 @@ import { questions } from '../data/questions';
 
 const Test = ({ gender, onComplete }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
+  // 점수는 단순 변수가 아닌 상태로 관리하되, 마지막 전달 시 '최신값'을 보장해야 합니다.
   const [userScores, setUserScores] = useState({ S: 0, M: 0, A: 0, F: 0 });
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // 🔥 [수정] Hook(useCallback)은 모든 조건부 return문보다 항상 위에 있어야 합니다!
   const handleAnswer = useCallback((effects) => {
     if (!effects || isTransitioning) return;
 
     setIsTransitioning(true);
 
-    const newScores = { ...userScores };
-    Object.keys(effects).forEach((stat) => {
-      const key = stat.toUpperCase();
-      if (Object.prototype.hasOwnProperty.call(newScores, key)) {
-        newScores[key] += effects[stat];
+    // 🔥 [핵심 수정] 함수형 업데이트를 사용하여 이전 점수를 정확히 가져옵니다.
+    setUserScores((prevScores) => {
+      const updatedScores = { ...prevScores };
+
+      // 선택지에 담긴 점수 가중치를 합산
+      Object.keys(effects).forEach((stat) => {
+        const key = stat.toUpperCase(); // s -> S 변환
+        if (Object.prototype.hasOwnProperty.call(updatedScores, key)) {
+          updatedScores[key] += effects[stat];
+        }
+      });
+
+      // 🔥 [핵심 수정] 마지막 질문일 경우, 
+      // 상태가 반영되길 기다리지 않고 '계산된 최신 점수(updatedScores)'를 즉시 전달합니다.
+      if (currentIdx === questions.length - 1) {
+        console.log("테스트 종료 - 즉시 전달 데이터:", updatedScores);
+        onComplete(updatedScores);
       }
+
+      return updatedScores;
     });
 
-    setUserScores(newScores);
-
+    // 다음 질문으로 넘어가는 애니메이션 지연
     setTimeout(() => {
       if (currentIdx < questions.length - 1) {
         setCurrentIdx(prev => prev + 1);
         setIsTransitioning(false);
-      } else {
-        console.log("모든 테스트 완료 - 최종 전달 데이터:", newScores);
-        onComplete(newScores);
       }
-    }, 100);
-  }, [currentIdx, userScores, isTransitioning, onComplete]);
+    }, 400); // 애니메이션 시간을 고려해 0.4초 정도로 조정
+  }, [currentIdx, isTransitioning, onComplete]);
 
-  // 데이터 검증용 return은 Hook 선언이 모두 끝난 뒤에 위치합니다.
+  // 데이터 검증
   if (!questions || questions.length === 0) {
     return (
       <Container>
