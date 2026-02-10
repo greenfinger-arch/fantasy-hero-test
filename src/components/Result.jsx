@@ -8,19 +8,18 @@ const Result = ({ gender = 'male', scores, onRestart }) => {
   console.log("전달된 점수:", scores);
 
   const hero = useMemo(() => {
-    // 1. 데이터셋 선택 및 안전 장치
     const dataset = gender === 'female' ? femaleHeroes : maleHeroes;
     if (!dataset || dataset.length === 0) return null;
 
-    // 2. 점수 집계 및 최고점 타입 추출
-    // scores가 null이거나 대소문자가 섞여올 경우를 대비해 안전하게 처리합니다.
+    // 1. 점수 집계 (S, M, A, F)
     const stats = [
-      { type: 's', val: scores?.S || scores?.s || 0 },
-      { type: 'm', val: scores?.M || scores?.m || 0 },
-      { type: 'a', val: scores?.A || scores?.a || 0 },
-      { type: 'f', val: scores?.F || scores?.f || 0 }
+      { type: 'S', val: scores?.S || 0 },
+      { type: 'M', val: scores?.M || 0 },
+      { type: 'A', val: scores?.A || 0 },
+      { type: 'F', val: scores?.F || 0 }
     ];
 
+    // 2. 가장 높은 점수의 타입 찾기 (대문자로 통일)
     const sortedStats = [...stats].sort((a, b) => b.val - a.val);
     const topType = sortedStats[0].type;
 
@@ -31,21 +30,17 @@ const Result = ({ gender = 'male', scores, onRestart }) => {
       if (legend) return legend;
     }
 
-    // 4. 🔥 [정밀 매칭] m_s_1 또는 M_S_1 형태에서 중앙의 타입을 정확히 매칭
-    const matchedHero = dataset.find(h => {
-      const heroId = h.id.toLowerCase();
-      const idParts = heroId.split('_');
-      // 예: 'm_s_1' -> idParts[1]은 's'가 됨
-      return idParts[1] === topType;
-    });
+    // 4. 🔥 [정밀 매칭 수정] ID를 쪼개지 않고 데이터의 'type' 필드와 직접 비교합니다.
+    // 데이터에 type: "S" 처럼 정의되어 있으므로 이게 가장 확실합니다.
+    let matchedHero = dataset.find(h => h.type === topType);
 
-    // 5. [최종 예외 처리] 매칭 실패 시 포함 여부 확인, 그래도 없으면 소드마스터가 아닌 중간 캐릭터(index 1) 반환
+    // 5. [예외 처리] 만약 type 필드로 못 찾으면 그때 ID 포함 여부로 재검사
     if (!matchedHero) {
-      const backupHero = dataset.find(h => h.id.toLowerCase().includes(`_${topType}_`));
-      return backupHero || dataset[1];
+      matchedHero = dataset.find(h => h.id.toLowerCase().includes(`_${topType.toLowerCase()}_`));
     }
 
-    return matchedHero;
+    // 6. [최종 방어] 모든 매칭 실패 시 소드마스터(index 0)가 아닌 다른 영웅(index 1) 반환
+    return matchedHero || dataset[1];
   }, [gender, scores]);
 
   // 로딩 상태 처리
