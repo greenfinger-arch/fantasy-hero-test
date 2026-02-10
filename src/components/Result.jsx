@@ -1,18 +1,13 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 import { maleHeroes, femaleHeroes } from '../data/heroes';
 
 const Result = ({ gender, scores, onRestart }) => {
-  // 1. 데이터 디버깅 (로그 확인 필수!)
-  useEffect(() => {
-    console.log("최종 도착 점수:", scores);
-  }, [scores]);
-
   const hero = useMemo(() => {
     const dataset = gender === 'female' ? femaleHeroes : maleHeroes;
 
-    // 점수 합산 및 최대값 찾기
+    // 1. 점수 분석 (데이터가 없어도 안전하게 처리)
     const stats = [
       { id: 'S', val: scores?.S || 0 },
       { id: 'M', val: scores?.M || 0 },
@@ -20,133 +15,161 @@ const Result = ({ gender, scores, onRestart }) => {
       { id: 'F', val: scores?.F || 0 }
     ];
 
-    // 가장 높은 점수의 ID 추출
-    const maxStat = stats.sort((a, b) => b.val - a.val)[0].id.toLowerCase();
+    // 2. 가장 높은 점수 찾기
+    const sortedStats = [...stats].sort((a, b) => b.val - a.val);
+    const topStat = sortedStats[0].val > 0 ? sortedStats[0].id.toLowerCase() : null;
 
-    // 🎯 [핵심] ID 매칭 로직 강화 (예: m_s_1 처럼 중간에 타입이 포함된 경우)
-    const found = dataset.find(h => h.id.toLowerCase().includes(`_${maxStat}_`));
+    // 3. 🎯 소드마스터 저주 방어 로직
+    // 만약 모든 점수가 0이면, 소드마스터(보통 ID 끝이 1)가 아닌 랜덤 영웅을 강제로 선택
+    if (!topStat) {
+      const randomIndex = Math.floor(Math.random() * (dataset.length - 1)) + 1;
+      return dataset[randomIndex];
+    }
 
-    // 만약 점수가 다 0이거나 못 찾으면, 소드마스터(보통 1번) 말고 랜덤하게라도 보여줌
-    return found || dataset[Math.floor(Math.random() * dataset.length)];
+    // 4. 매칭되는 영웅 찾기
+    const found = dataset.find(h => h.id.toLowerCase().includes(`_${topStat}_`));
+
+    // 만약 매칭 실패 시 소드마스터가 아닌 두 번째 영웅을 기본값으로 설정
+    return found || dataset[1];
   }, [gender, scores]);
 
   return (
     <Container
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.8 }}
+      exit={{ opacity: 0 }}
     >
-      <CardSection>
-        {/* 영웅 카드 등장 연출 */}
-        <HeroCard
-          initial={{ y: 50, opacity: 0, rotateY: -20 }}
-          animate={{ y: 0, opacity: 1, rotateY: 0 }}
-          transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.2 }}
-        >
-          <div className="rank-tag">DESTINY RANK: SSR</div>
-          <ImageContainer>
-            <img src={hero.image} alt={hero.name} />
-            <div className="glow-effect" />
-          </ImageContainer>
-
-          <InfoBox>
-            <motion.h3
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              {hero.title}
-            </motion.h3>
-            <motion.h1
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.7 }}
-            >
-              {hero.name}
-            </motion.h1>
-            <p className="desc">{hero.description}</p>
-          </InfoBox>
-        </HeroCard>
-
-        {/* 능력치 그래프 연출 */}
-        <StatBoard
-          initial={{ x: 30, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.9 }}
-        >
-          <h3>POTENTIAL STATS</h3>
-          {['S', 'M', 'A', 'F'].map((s, idx) => (
-            <StatRow key={s}>
-              <span className="label">{s}</span>
-              <BarBg>
-                <BarFill
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(scores[s] / 12) * 100}%` }} // 12개 질문 기준
-                  transition={{ duration: 1, delay: 1.2 + (idx * 0.1) }}
-                />
-              </BarBg>
-            </StatRow>
-          ))}
-          <RestartButton
-            onClick={onRestart}
-            whileHover={{ scale: 1.05, boxShadow: "0 0 20px #D4AF37" }}
-            whileTap={{ scale: 0.95 }}
+      <ContentWrapper>
+        <Header>
+          <motion.p
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="subtitle"
           >
-            REAWAKEN DESTINY
-          </RestartButton>
-        </StatBoard>
-      </CardSection>
+            THE DESTINY HAS BEEN REVEALED
+          </motion.p>
+          <motion.h1
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            당신의 영혼과 공명하는 영웅
+          </motion.h1>
+        </Header>
+
+        <MainDisplay>
+          {/* 카드 연출부 */}
+          <HeroCard
+            initial={{ x: -50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.4, type: "spring" }}
+          >
+            <ImageFrame>
+              <img src={hero.image} alt={hero.name} />
+              <div className="overlay-gradient" />
+              <div className="hero-type-tag">{hero.title}</div>
+            </ImageFrame>
+            <HeroInfo>
+              <h2>{hero.name}</h2>
+              <p>{hero.description}</p>
+            </HeroInfo>
+          </HeroCard>
+
+          {/* 능력치 연출부 */}
+          <SidePanel
+            initial={{ x: 50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.6 }}
+          >
+            <StatBox>
+              <h3>HEROIC POTENTIAL</h3>
+              {['S', 'M', 'A', 'F'].map((key, i) => (
+                <StatLine key={key}>
+                  <div className="info">
+                    <span>{key} TYPE</span>
+                    <span>{scores[key] || 0}</span>
+                  </div>
+                  <BarContainer>
+                    <BarFill
+                      initial={{ width: 0 }}
+                      animate={{ width: `${((scores[key] || 0) / 10) * 100}%` }}
+                      transition={{ delay: 0.8 + (i * 0.1), duration: 1 }}
+                    />
+                  </BarContainer>
+                </StatLine>
+              ))}
+            </StatBox>
+
+            <ActionArea>
+              <RestartBtn onClick={onRestart} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                운명 다시 결정하기
+              </RestartBtn>
+            </ActionArea>
+          </SidePanel>
+        </MainDisplay>
+      </ContentWrapper>
     </Container>
   );
 };
 
-// --- 스타일 컴포넌트 ---
+// --- Styled Components (압도적 디자인 복구) ---
+
 const Container = styled(motion.div)`
-  width: 100%; min-height: 100vh; display: flex; justify-content: center; align-items: center;
-  background: #050505; padding: 20px;
+  width: 100%; min-height: 100vh; background: #050505;
+  display: flex; justify-content: center; align-items: center; padding: 40px 20px;
 `;
 
-const CardSection = styled.div`
-  display: flex; gap: 40px; max-width: 1000px; width: 100%;
-  @media (max-width: 900px) { flex-direction: column; align-items: center; }
+const ContentWrapper = styled.div` width: 100%; max-width: 1200px; `;
+
+const Header = styled.div`
+  text-align: center; margin-bottom: 50px;
+  .subtitle { color: #D4AF37; font-family: 'Cinzel', serif; letter-spacing: 4px; font-size: 0.9rem; }
+  h1 { color: #fff; font-size: 2.5rem; margin-top: 10px; font-weight: 300; }
+`;
+
+const MainDisplay = styled.div`
+  display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 40px;
+  @media (max-width: 900px) { grid-template-columns: 1fr; }
 `;
 
 const HeroCard = styled(motion.div)`
-  flex: 1; background: #111; border: 2px solid #D4AF37; border-radius: 20px;
-  position: relative; overflow: hidden; box-shadow: 0 0 40px rgba(212, 175, 55, 0.2);
-  .rank-tag { position: absolute; top: 15px; right: 15px; color: #D4AF37; font-family: 'Cinzel'; font-weight: bold; z-index: 5; }
+  background: #111; border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 20px; overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
 `;
 
-const ImageContainer = styled.div`
-  width: 100%; height: 450px; position: relative;
-  img { width: 100%; height: 100%; object-fit: cover; filter: contrast(1.1) brightness(0.9); }
-  .glow-effect { position: absolute; bottom: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to top, #111, transparent); }
+const ImageFrame = styled.div`
+  width: 100%; height: 500px; position: relative;
+  img { width: 100%; height: 100%; object-fit: cover; }
+  .overlay-gradient { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 50%, #111); }
+  .hero-type-tag { position: absolute; top: 20px; left: 20px; background: #8b0000; color: #fff; padding: 5px 15px; font-family: 'Cinzel'; font-size: 0.8rem; border: 1px solid #D4AF37; }
 `;
 
-const InfoBox = styled.div`
-  padding: 30px; text-align: center;
-  h3 { color: #8b0000; font-family: 'Cinzel'; font-size: 1rem; margin-bottom: 5px; }
-  h1 { color: #fff; font-family: 'Cinzel'; font-size: 2.2rem; margin-bottom: 15px; letter-spacing: 2px; }
-  .desc { color: #aaa; line-height: 1.6; font-size: 0.95rem; word-break: keep-all; }
+const HeroInfo = styled.div`
+  padding: 40px; text-align: center;
+  h2 { color: #D4AF37; font-family: 'Cinzel'; font-size: 2.5rem; margin-bottom: 20px; }
+  p { color: #aaa; line-height: 1.8; font-size: 1.1rem; }
 `;
 
-const StatBoard = styled(motion.div)`
-  flex: 0.7; display: flex; flex-direction: column; justify-content: center;
-  h3 { font-family: 'Cinzel'; margin-bottom: 20px; color: #D4AF37; }
+const SidePanel = styled(motion.div)` display: flex; flex-direction: column; gap: 30px; `;
+
+const StatBox = styled.div`
+  background: rgba(255,255,255,0.03); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
+  h3 { color: #fff; font-family: 'Cinzel'; margin-bottom: 30px; letter-spacing: 2px; }
 `;
 
-const StatRow = styled.div`
-  display: flex; align-items: center; gap: 15px; margin-bottom: 15px;
-  .label { width: 20px; color: #fff; font-family: 'Cinzel'; font-weight: bold; }
+const StatLine = styled.div`
+  margin-bottom: 20px;
+  .info { display: flex; justify-content: space-between; color: #fff; font-family: 'Cinzel'; font-size: 0.8rem; margin-bottom: 8px; }
 `;
 
-const BarBg = styled.div` flex: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; `;
-const BarFill = styled(motion.div)` height: 100%; background: linear-gradient(90deg, #8b0000, #D4AF37); box-shadow: 0 0 10px #D4AF37; `;
+const BarContainer = styled.div` width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; `;
+const BarFill = styled(motion.div)` height: 100%; background: linear-gradient(90deg, #D4AF37, #8b0000); box-shadow: 0 0 10px #D4AF37; `;
 
-const RestartButton = styled(motion.button)`
-  margin-top: 30px; padding: 15px; background: transparent; border: 1px solid #D4AF37;
-  color: #D4AF37; font-family: 'Cinzel'; font-size: 1rem; cursor: pointer; border-radius: 5px;
-  transition: all 0.3s;
+const ActionArea = styled.div` display: flex; flex-direction: column; gap: 15px; `;
+const RestartBtn = styled(motion.button)`
+  padding: 20px; background: transparent; border: 1px solid #D4AF37; color: #D4AF37;
+  font-family: 'Cinzel'; cursor: pointer; border-radius: 10px; font-size: 1rem;
+  &:hover { background: rgba(212, 175, 55, 0.1); }
 `;
 
 export default Result;
