@@ -11,40 +11,45 @@ const Result = ({ gender = 'male', scores, onRestart }) => {
     const dataset = gender === 'female' ? femaleHeroes : maleHeroes;
     if (!dataset || dataset.length === 0) return null;
 
-    // 1. 점수 추출 (기본값 0 설정)
     const { S = 0, M = 0, A = 0, F = 0 } = scores || {};
     const totalScore = S + M + A + F;
 
-    // 2. 가장 높은 점수의 타입 찾기
+    // 1. 점수가 있는 타입들만 내림차순 정렬 (예: [{type: 'M', val: 7}, {type: 'S', val: 5}, ...])
     const stats = [
       { type: 'S', val: S },
       { type: 'M', val: M },
       { type: 'A', val: A },
       { type: 'F', val: F }
-    ];
-    const sortedStats = [...stats].sort((a, b) => b.val - a.val);
-    const topType = sortedStats[0].type;
+    ].sort((a, b) => b.val - a.val);
 
-    // 3. 🔥 [정밀 매칭 로직]
-    let matchedHero = null;
+    const top1 = stats[0]; // 1위 타입
+    const top2 = stats[1]; // 2위 타입
 
-    // A. 만점 혹은 고득점(11점 이상)일 때: 해당 타입의 '전설' 등급을 우선 탐색
-    if (totalScore >= 11) {
-      matchedHero = dataset.find(h => h.type === topType && (h.rank === "전설" || h.rank === "SSR"));
-    }
+    // 2. 각 영웅에게 '적합도 점수'를 부여하여 가장 높은 점수의 영웅 선택
+    const heroScores = dataset.map(h => {
+      let matchPoint = 0;
 
-    // B. 전설 등급이 없거나 점수가 평범할 때: 해당 타입의 일반 캐릭터 탐색
-    if (!matchedHero) {
-      matchedHero = dataset.find(h => h.type === topType);
-    }
+      // (A) 전설 등급 가산점 (총점이 높을 때만)
+      if (totalScore >= 11 && (h.rank === "전설" || h.rank === "SSR")) {
+        matchPoint += 5;
+      }
 
-    // C. [히든 캐릭터] 만약 모든 점수가 0점이고 결과가 안 나온다면 'ALL MAX' 타입 탐색
-    if (!matchedHero && topType === "S" && totalScore === 0) {
-      matchedHero = dataset.find(h => h.type === "ALL MAX");
-    }
+      // (B) 타입 매칭 점수
+      // 영웅의 type이 "M+S"라면, 사용자의 top 1, 2 타입이 M, S일 때 높은 점수 부여
+      if (h.type === top1.type) matchPoint += 10; // 1순위 일치
+      if (h.type.includes(top1.type)) matchPoint += 7; // 복합 타입에 1순위 포함 (예: "M+S"에 M 포함)
+      if (top2.val > 0 && h.type.includes(top2.type)) matchPoint += 3; // 2순위 포함
 
-    // 4. [최종 방어] 모든 매칭 실패 시 배열의 첫 번째 영웅 반환
-    return matchedHero || dataset[0];
+      // (C) 특수 타입 처리
+      if (h.type === "ALL MAX" && totalScore >= 11) matchPoint += 4;
+
+      return { hero: h, score: matchPoint };
+    });
+
+    // 3. 가장 높은 점수를 받은 영웅 선택 (점수가 같으면 배열 앞 순서)
+    const finalHero = heroScores.sort((a, b) => b.score - a.score)[0].hero;
+
+    return finalHero || dataset[0];
   }, [gender, scores]);
 
   // 로딩 상태 처리
