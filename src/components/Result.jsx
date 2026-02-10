@@ -12,9 +12,8 @@ const Result = ({ gender = 'male', scores, onRestart }) => {
     if (!dataset || dataset.length === 0) return null;
 
     const { S = 0, M = 0, A = 0, F = 0 } = scores || {};
-    const totalScore = S + M + A + F;
 
-    // 1. 점수 배열 생성 및 정렬 (높은 점수 순)
+    // 1. 사용자 점수를 내림차순 정렬
     const stats = [
       { type: 'S', val: S },
       { type: 'M', val: M },
@@ -22,47 +21,47 @@ const Result = ({ gender = 'male', scores, onRestart }) => {
       { type: 'F', val: F }
     ].sort((a, b) => b.val - a.val);
 
-    const top1 = stats[0]; // 가장 높은 점수 (예: M)
-    const top2 = stats[1]; // 두 번째 높은 점수 (예: S)
+    const top1 = stats[0];
+    const top2 = stats[1];
+    const totalScore = S + M + A + F;
 
-    // 2. 모든 영웅 전수 조사 및 점수 매기기
+    // 2. 영웅별 적합도 계산
     const scoredHeroes = dataset.map(h => {
-      let score = 0;
-      const heroType = h.type.toUpperCase(); // 데이터의 타입을 대문자로 변환
+      let matchScore = 0;
+      const heroType = h.type.toUpperCase();
 
-      // [규칙 1] 내 가장 높은 점수의 타입이 영웅 타입에 포함되어 있는가? (가장 중요)
-      if (heroType.includes(top1.type)) {
-        score += 10;
-      }
+      // [핵심 로직 1] 단어 단위 매칭 (S/M Extreme에서 S를 정확히 찾아냄)
+      // 단순히 포함 여부가 아니라, 독립된 글자로 존재하는지 확인
+      const hasTop1 = new RegExp(`\\b${top1.type}\\b`).test(heroType.replace(/[/+]/g, ' '));
+      const hasTop2 = new RegExp(`\\b${top2.type}\\b`).test(heroType.replace(/[/+]/g, ' '));
 
-      // [규칙 2] 내 두 번째 높은 점수의 타입도 포함되어 있는가? (복합 타입 매칭)
-      if (top2.val > 0 && heroType.includes(top2.type)) {
-        score += 5;
-      }
+      // 점수 부여
+      if (hasTop1) matchScore += 10; // 1순위 타입 포함 시 10점
+      if (top2.val > 0 && hasTop2) matchScore += 5; // 2순위 타입 포함 시 5점
 
-      // [규칙 3] 전설 등급 가산점 (고득점 유저를 위한 우대)
+      // [핵심 로직 2] 복합 타입 보너스
+      // 내 점수가 1, 2위가 뚜렷할 때, 영웅도 그 두 타입을 모두 가지고 있다면 추가 점수
+      if (hasTop1 && hasTop2) matchScore += 3;
+
+      // [핵심 로직 3] 등급 가중치
       if (totalScore >= 11 && (h.rank === "전설" || h.rank === "SSR")) {
-        score += 3;
+        matchScore += 2;
+      } else if (totalScore < 11 && h.rank === "일반") {
+        matchScore += 1;
       }
 
-      // [규칙 4] 정확히 일치하는 경우 추가 가산점 (예: M인데 딱 M만 있는 경우)
-      if (heroType === top1.type) {
-        score += 2;
-      }
-
-      return { hero: h, matchScore: score };
+      return { ...h, finalScore: matchScore };
     });
 
-    // 3. 매치 점수가 가장 높은 순으로 정렬
-    scoredHeroes.sort((a, b) => b.matchScore - a.matchScore);
+    // 3. 적합도 점수로 정렬 (점수가 같으면 랜덤성을 위해 약간 섞어줌)
+    scoredHeroes.sort((a, b) => {
+      if (b.finalScore !== a.finalScore) {
+        return b.finalScore - a.finalScore;
+      }
+      return 0.5 - Math.random(); // 점수가 같을 때만 무작위성 부여
+    });
 
-    // 4. 최고점 영웅 반환
-    // 만약 점수가 0점(매칭 실패)이면 top1 타입에 해당하는 아무 영웅이나 찾음
-    if (scoredHeroes[0].matchScore === 0) {
-      return dataset.find(h => h.type.includes(top1.type)) || dataset[0];
-    }
-
-    return scoredHeroes[0].hero;
+    return scoredHeroes[0];
   }, [gender, scores]);
 
   // 로딩 상태 처리

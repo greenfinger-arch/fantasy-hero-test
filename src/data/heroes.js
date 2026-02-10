@@ -504,7 +504,7 @@ export const femaleHeroes = [
     partner: "방랑자",
     glowColor: "#a1887f"
   },
-  {
+ {
     id: "f_ms_1",
     name: "빙결의 여왕",
     rank: "희귀",
@@ -518,7 +518,7 @@ export const femaleHeroes = [
     weapon: "만년설 지팡이",
     partner: "강철의 연금술사",
     glowColor: "#e1f5fe"
-  },
+  }, 
 
   // [전설 등급 - 초월자]
   {
