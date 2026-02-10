@@ -5,8 +5,8 @@ import { questions } from '../data/questions';
 
 const Test = ({ gender, onComplete }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
-  // 점수는 단순 변수가 아닌 상태로 관리하되, 마지막 전달 시 '최신값'을 보장해야 합니다.
-  const [userScores, setUserScores] = useState({ S: 0, M: 0, A: 0, F: 0 });
+  // 🔥 [수정] 빌드 에러 해결: 사용하지 않는 userScores 변수 제거
+  const [, setUserScores] = useState({ S: 0, M: 0, A: 0, F: 0 });
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const handleAnswer = useCallback((effects) => {
@@ -14,38 +14,34 @@ const Test = ({ gender, onComplete }) => {
 
     setIsTransitioning(true);
 
-    // 🔥 [핵심 수정] 함수형 업데이트를 사용하여 이전 점수를 정확히 가져옵니다.
+    // 함수형 업데이트로 최신 상태 유지
     setUserScores((prevScores) => {
       const updatedScores = { ...prevScores };
 
-      // 선택지에 담긴 점수 가중치를 합산
       Object.keys(effects).forEach((stat) => {
-        const key = stat.toUpperCase(); // s -> S 변환
+        const key = stat.toUpperCase();
         if (Object.prototype.hasOwnProperty.call(updatedScores, key)) {
           updatedScores[key] += effects[stat];
         }
       });
 
-      // 🔥 [핵심 수정] 마지막 질문일 경우, 
-      // 상태가 반영되길 기다리지 않고 '계산된 최신 점수(updatedScores)'를 즉시 전달합니다.
+      // 마지막 질문일 때 즉시 결과 전달 (0점 방지 핵심 로직)
       if (currentIdx === questions.length - 1) {
-        console.log("테스트 종료 - 즉시 전달 데이터:", updatedScores);
+        console.log("테스트 종료 - 최종 전달:", updatedScores);
         onComplete(updatedScores);
       }
 
       return updatedScores;
     });
 
-    // 다음 질문으로 넘어가는 애니메이션 지연
     setTimeout(() => {
       if (currentIdx < questions.length - 1) {
         setCurrentIdx(prev => prev + 1);
         setIsTransitioning(false);
       }
-    }, 400); // 애니메이션 시간을 고려해 0.4초 정도로 조정
+    }, 400);
   }, [currentIdx, isTransitioning, onComplete]);
 
-  // 데이터 검증
   if (!questions || questions.length === 0) {
     return (
       <Container>
